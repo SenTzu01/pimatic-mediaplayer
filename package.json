@@ -1,0 +1,57 @@
+{
+  "name": "pimatic-mediaplayer",
+  "description": "Pimatic plugin providing Media Player devices in the local network",
+  "author": {
+    "name": "Danny Wigmans",
+    "url": "SenTzu01"
+  },
+  "main": "mediaplayer.coffee",
+  "files": [
+    "actions",
+    "devices",
+    "lib",
+    "mediaplayer.coffee",
+    "mediaplayer-config-schema.coffee",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "home automation",
+    "pimatic",
+    "media player",
+    "DLNA",
+    "SSDP",
+    "UPNP"
+  ],
+  "version": "0.0.1",
+  "homepage": "https://github.com/SenTzu01/pimatic-mediaplayer",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/SenTzu01/pimatic-mediaplayer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SenTzu01/pimatic-mediaplayer/issues"
+  },
+  "license": "AGPL-3.0",
+  "maintainers": [
+    {
+      "name": "sentzu01",
+      "email": "sentzu01@gmail.com"
+    }
+  ],
+  "configSchema": "mediaplayer-config-schema.coffee",
+  "dependencies": {
+    "castv2-client": "^1.2.0",
+    "elementtree": "^0.1.7",
+    "pimatic-plugin-commons": "^0.9.5",
+    "request": "^2.85.0",
+    "upnp-device-client": "SenTzu01/node-upnp-device-client",
+    "mediaserver": "^0.1.1"
+  },
+  "optionalDependencies": {},
+  "engines": {
+    "node": ">0.8.x",
+    "npm": ">1.1.x"
+  }
+}
