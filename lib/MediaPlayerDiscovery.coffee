@@ -44,7 +44,7 @@ module.exports = (env) ->
     _startBrowser: () =>
       @_debug( __("Media player discovery started") )
       
-      @_listener = new SSDP(@address, @port, @_debug)
+      @_listener = new SSDP(@address, @port, @debug)
       
       @_listener.on('ssdpResponse', @_onSsdpResponse)
       @_listener.search( @_schema )

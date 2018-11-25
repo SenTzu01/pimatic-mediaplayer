@@ -7,6 +7,10 @@ module.exports = (env) ->
   MediaServer = require('./lib/MediaServer')(env)
   
   MediaPlayerProviders =
+    heos:
+      type: 'Heos'
+      device: 'HeosMediaPlayerDevice'
+      deviceDef: 'mediaplayer-device-config-schemas'
     generic:
       type: 'UPnP'
       device: 'UPnPMediaPlayerDevice'
@@ -25,6 +29,7 @@ module.exports = (env) ->
       @_inetAddresses = []
       address = @_configureMediaServerAddress()
       @base.debug address
+      
       @_mediaServer = new MediaServer({ port:0, address: address }, @debug)
       @_mediaServer.create()
       
@@ -67,8 +72,6 @@ module.exports = (env) ->
             createCallback: (config, lastState) => return new deviceClass(config, lastState, options, @debug) #@debug
           }
           @framework.deviceManager.registerDeviceClass(className, params)
-          
-          
       
       #@base.debug "Registering action provider"
       #actionProviderClass = require('./actions/MediaPlayerActionProvider')(env)
@@ -84,12 +87,14 @@ module.exports = (env) ->
         class: MediaPlayerProviders[cfg.type].device
       })
     
+    ###
     _startMediaServer: (resource) =>
       
       @_mediaServer.create(resource)
     
     _stopMediaServer: () =>
       @_mediaServer.stop() if @_mediaServer?
+    ###
     
     _isNewDevice: (id) -> 
       return !@framework.deviceManager.isDeviceInConfig(id)
@@ -138,6 +143,7 @@ module.exports = (env) ->
       return ip
       
     destroy: () ->
+      @_mediaServer.stop() if @_mediaServer?
       super()
       
   MediaPlayerPlugin = new MediaPlayer

@@ -25,43 +25,40 @@ module.exports = (env) ->
     
     playAudio: (@_resource, outputDuration, volume = 40) =>
       return new Promise( (resolve, reject) =>
-        url = @_mediaServer.addResource(@_resource)
+        
+        @_debug __("outputDuration: %s", outputDuration)
         
         @_disableUpdates()
+        
+        @_controller = @_newController(@_xml) if !@_controller?
+        @_controller
+          .once('playing', ()     => resolve "success" )
+          .once('stopped', ()     => @_onStopped() )
+          .once('error', (error)  => reject @_errorHandler(error) )
+        
+        url = @_mediaServer.addResource(@_resource)
         opts = {
           contentType: 'audio/mp3'
           duration: outputDuration
         }
-        
-        @_controller = @_newController(@_xml) if !@_controller?
-        @_controller
-          .once('stopped', ()     => resolve @_onStopped() )
-          .once('error', (error)  => reject @_errorHandler(error) )
-          .load(url, opts, (error, result) =>
-            if error?
-              @_debug __("error - code: %s, message: %s", error.code, error.message)
-            reject error if error?
+        @_controller.load(url, opts, (error, result) =>
+          if error?
+            @_debug __("load error - code: %s, message: %s", error.code, error.message)
+            Promise.reject error
           
+          @_debug result
+          
+          @_controller.play( (error, result) =>
+            if error?
+              @_debug __("play error - code: %s, message: %s", error.code, error.message)
+              reject error
             @_debug result
-            @_controller.play( (error, result) =>
-              reject error if error?
-              
-              @_debug result
-              @_controller.getMediaInfo( (error, result) =>
-                reject error if error?
-                
-                @_debug result
-                @_controller.getTransportInfo( (error, result) =>
-                  reject error if error?
-                  
-                  @_debug result
-                )
-              )
-            )
+            resolve url
           )
+        )
       )
       .catch( (error) =>
-        Promise.reject @_errorHandler(error)
+        @base.rejectWithErrorString( Promise.reject, @_errorHandler(error) )
       )
     
     stop: () =>
@@ -73,24 +70,15 @@ module.exports = (env) ->
       @_enableUpdates()
       return "success"
     
-    _errorHandler: (error) =>
-      @base.resetLastError()
-      @_logStatus( __("error - ", error.message) )
-      @_mediaServer.removeResource(@_resource)
-      @_enableUpdates()
-      return error
-    
     _getController: (xml) =>
       controller = new MediaPlayerController(xml, @debug)
         .on("loading", () => @_logStatus( "loading" ) )
-        .on("playing", () => @_logStatus( "playing" ) )
+        .on("stopped", () => @_logStatus( "stopped" ) )
         .on("paused", ()  => @_logStatus( "paused" ) )
       return controller
     
     _newController: (xml) =>
       @_controller = null
       return @_getController(xml)
-      
-    _logStatus: (status) => @_debug( __("Network media player: %s", status) )
-    
+  
   return UPnPMediaPlayerDevice

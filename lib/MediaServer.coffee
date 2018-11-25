@@ -46,7 +46,7 @@ module.exports = (env) ->
             )
         
             if !@_validRequest(request)
-              @_httpResponse404(response)
+              @_httpResponse404(request, response)
               env.logger.debug __("resource not found: %s", request.url)
               return
         
@@ -85,18 +85,18 @@ module.exports = (env) ->
         )
       )
     
-    addResource: (resource) =>
-      fileName = path.basename(resource)
+    addResource: (pResource) =>
+      fileName = path.basename(pResource)
       vResource = path.join( @_virtualDirMedia, fileName )
       url = __("http://%s:%s%s", @_serverAddress, @_serverPort, vResource)
       
       if !@_resources[fileName]?
         @_resources[fileName] = {
-          physicalResource: resource
-          virtualResource: vResource
-          url: url
+          physicalResource: pResource
+          virtualResource:  vResource
+          url:              url
         }
-        env.logger.debug __("Media server added resource: %s", vResource)
+        env.logger.debug __("Media server added resource: %s => %s", vResource, pResource)
       
       return url
       
@@ -111,10 +111,13 @@ module.exports = (env) ->
       return match
     
     _getPhysicalResource: (request) =>
-      return res.physicalResource if request?.url is res.virtualResource for key, res of @_resources
-      return null
+      pResource = null
+      for key, res of @_resources
+        if request?.url is res.virtualResource
+          pResource = res.physicalResource 
+      return pResource
       
-    _httpResponse404: (response) =>
+    _httpResponse404: (request, response) =>
       response.writeHead(404)
       response.end()
       

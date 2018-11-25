@@ -98,6 +98,8 @@
         options = {}
       
       contentType = options.contentType ? 'video/mpeg'
+      @_debug __('contentDuration: %s', options.duration)
+      contentDuration = @_formatTime(Math.ceil(options.duration))
       #contentDuration = @_formatTime( options.duration )
       #contentDuration = parseInt(options.duration)
       protocolInfo = __( "http-get:*:%s:*", contentType )
@@ -105,29 +107,33 @@
       metadata = options.metadata ? {}
       metadata.url = url
       metadata.protocolInfo = protocolInfo
-      #metadata.contentDuration = contentDuration
+      metadata.contentDuration = contentDuration
       
       params = {
         RemoteProtocolInfo: protocolInfo,
-        
-        PeerConnectionManager: null,
+        PeerConnectionManager: null, # null
         PeerConnectionID: -1,
         Direction: 'Input'
       }
+      @_debug(params)
       @_debug __("@callAction('ConnectionManager', 'PrepareForConnection')")
       @callAction('ConnectionManager', 'PrepareForConnection', params, (error, result) =>
-        return callback(error) if error? and error.code != 'ENOACTION'
+        if error? and error.code != 'ENOACTION'
+          return callback(error)
         
+        @_debug result
         # If PrepareForConnection is not implemented, we keep the default (0) InstanceID
-        @_instanceId = result.AVTransportID if result?.AVTransportID?
+        @_instanceId = result?.AVTransportID ? 0  #if result?.AVTransportID?
         
         params = {
           InstanceID: @_instanceId,
           CurrentURI: url,
           CurrentURIMetaData: @_buildMetadata(metadata)
         }
+        @_debug(params)
         @_debug __("@callAction('AVTransport', 'SetAVTransportURI')")
         @callAction('AVTransport', 'SetAVTransportURI', params, callback)
+      
       )
       
     play: (callback) =>
@@ -135,8 +141,11 @@
         InstanceID: @_instanceId,
         Speed: 1
       }
-      @_debug __("@callAction('AVTransport', 'Play')")
-      @callAction( 'AVTransport', 'Play', params, callback)
+      @getMediaInfo( (error, result) =>
+        callback(error) if error?
+        @_debug __("@callAction('AVTransport', 'Play')")
+        @callAction( 'AVTransport', 'Play', params, callback)
+      )
     
     getMediaInfo: (callback) =>
       params = {
@@ -279,6 +288,6 @@
     _debug: (msg) =>
       if typeof msg is 'object'
         msg = util.inspect( msg, {showHidden: true, depth: null } )
-      env.logger.debug __("[MediaPlayerController] %s", msg) if @debug
+      env.logger.debug __("[MediaPlayerController] %s", msg) #if @debug
   
   return MediaPlayerController

@@ -10,6 +10,16 @@ module.exports = {
         default: false
         required: false
   }
+  HeosMediaPlayerDevice: {
+    title: "HEOS Media player device config options"
+    type: "object"
+    properties:
+      debug:
+        description: "Debug this device."
+        type: "boolean"
+        default: false
+        required: false
+  }
   ChromecastMediaPlayerDevice: {
     title: "Chromecast Media player device config options"
     type: "object"

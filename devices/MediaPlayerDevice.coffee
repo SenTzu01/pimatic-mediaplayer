@@ -64,6 +64,7 @@ module.exports = (env) ->
       
       return if @_pauseUpdates
       @_debug __("Updating network device information")
+      @_debug(config.xml)
       
       @_setName(config.name)
       @_setHost(config.address)
@@ -111,9 +112,19 @@ module.exports = (env) ->
     _disableUpdates: () -> @_pauseUpdates = true
     _enableUpdates: () -> @_pauseUpdates = false
     
+    _errorHandler: (error) =>
+      @base.resetLastError()
+      @_logStatus( __("error - %s", error.message) )
+      @_mediaServer.removeResource(@_resource)
+      @_enableUpdates()
+      return error
+    
     _debug: (msg) =>
       if typeof msg is 'object'
         msg = util.inspect( msg, {showHidden: true, depth: null } )
       env.logger.debug __("[%s] %s", @name, msg) if @debug
-      
+    
+    _logStatus: (status) =>
+      @_debug( __("Network media player: %s", status) )
+
   return MediaPlayerDevice

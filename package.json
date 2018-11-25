@@ -47,7 +47,8 @@
     "pimatic-plugin-commons": "^0.9.5",
     "request": "^2.85.0",
     "upnp-device-client": "SenTzu01/node-upnp-device-client",
-    "mediaserver": "^0.1.1"
+    "mediaserver": "^0.1.1",
+    "heos-api": "SenTzu01/heos-api"
   },
   "optionalDependencies": {},
   "engines": {
