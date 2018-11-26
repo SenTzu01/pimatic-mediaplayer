@@ -56,7 +56,7 @@ module.exports = (env) ->
       
       @_eventSocket = new net.Socket()
         .once( 'connect', () =>
-          console.log(__('Connected to HEOS for events: %s:%s', @_host, @_DEFAULT_PORT))
+          @_debug('Connected to HEOS device for event messages')
           @_heosSendCommand(              @_HEOS.ENABLE.EVENTS,       { enable: 'on' }, null, @_eventSocket )
         )
         .on('data', @_heosEventHandler)
@@ -75,8 +75,6 @@ module.exports = (env) ->
         @_pid = pid
       )
       
-      
-    
     playAudio: (@_resource, duration, volume = 40) =>
       @_volume.current = volume
       
@@ -124,7 +122,9 @@ module.exports = (env) ->
             
             )
             .once( 'connect', () =>
-              console.log(__('Connected to HEOS: %s:%s', @_host, port))
+              
+              @_debug('Connected to HEOS device for commands')
+              
               resolve @_heosSocket
             )
             .connect(port, host)
@@ -145,32 +145,19 @@ module.exports = (env) ->
         })
         command += __('&%s=%s', key, value) for key, value of literals
         
-        socket.once( 'data', (data) =>
-          responses = data.toString().trim().split('\r\n')
+        socket.once( 'data', (buffer) =>
+          res = @_heosParseBuffer(buffer)
+          response = res[0]
           
-          responses.map( ( response) =>
-            res = JSON.parse( response + '\r\n' ) unless response is ''
-            
-            if res?.heos?.result?
-              
-              if !res.payload?
-                attributes = {}
-            
-                if res.heos.message?
-                  params = res.heos.message.split('&')
-                  params.map( (param) =>
-                    keyValue = param.split('=')
-                    attributes[keyValue[0]] = keyValue[1]
-                  )
-                res.payload = attributes
-              
-              console.log('DATA:')
-              @_debug(res)
-              console.log(__('Data received from: %s', @_host))
-              
-              resolve res if res.heos.result is 'success'
-              reject new Error( _('Error: command "%s" failed with error %s', command, res.heos.message) ) if res.heos.result is 'fail'
-          )
+          #console.log('DATA:')
+          #@_debug(response)
+          #console.log(__('Data received from: %s', @_host))
+          
+          if response.heos.result is 'success'
+            resolve response
+          
+          else if response.heos.result is 'fail'
+            reject new Error( _('Error: command "%s" failed with error %s', command, response.heos.message) )
         )
         
         socket.write( command + '\r\n')
@@ -180,37 +167,53 @@ module.exports = (env) ->
       )
     
     _heosEventHandler: (buffer) =>
-      data = buffer.toString().trim().split('\r\n')
-      data.map( ( response) =>
-        res = JSON.parse( response + '\r\n' ) unless response is ''
+      events = @_heosParseBuffer(buffer)
+      events.map( (response) =>
         
-        if res?.heos?.command?
-          groupCommand = res.heos.command.split('/')
-          
-          if 'event' is groupCommand[0]
-            
-            console.log(__('EVENT RECEIVED FROM: %s', @_host))
-            @_debug(res)
-            
-            attributes = {}
-            
-            if res.heos.message?
-              params = res.heos.message.split('&')
-              params.map( (param) =>
-                keyValue = param.split('=')
-                attributes[keyValue[0]] = keyValue[1]
-              )
-              
-              console.log('END EVENT')
-            
-            @emit(groupCommand[1], attributes)
+        if response.group is 'event'
+          console.log(__('EVENT RECEIVED FROM: %s', @_host))
+          @_debug(response)
+          console.log('END EVENT')
+          @emit(response.command, response.payload)
+        
       )
+    
+    _heosParseBuffer: (buffer) =>
+      responses = []
+      
+      messages = buffer.toString().trim().split('\r\n')
+      messages.map( ( data) =>
+        unless data is ''
+          response = JSON.parse( data + '\r\n' )
+          if response.heos?.message?
+            message = @_heosParseMessage(response.heos.message)
+            command = response.heos.command.split('/')
+            
+            response.heos.message = message
+            response.group = command[0]
+            response.command = command[1]
+            
+            if not response.payload? # DATA does not have payload, we add one from message element
+              response.payload = message
+            
+            responses.push response
+      )
+      return responses
+    
+    _heosParseMessage: (message) =>
+      attributes = {}
+      params = message.split('&')
+      params.map( (param) =>
+        keyValue = param.split('=')
+        attributes[keyValue[0]] = keyValue[1]
+      )
+      return attributes
     
     destroy: =>
       @_heosSocket.destroy()
       @_eventSocket.destroy()
       
-      console.log(__('Disconnected from HEOS: %s', @_host))
+      @_debug(__('Disconnected HEOS command and event sockets for: %s', @id))
       
       super()
   
