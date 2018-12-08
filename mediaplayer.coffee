@@ -11,14 +11,14 @@ module.exports = (env) ->
       type: 'Heos'
       device: 'HeosMediaPlayerDevice'
       deviceDef: 'mediaplayer-device-config-schemas'
-    generic:
-      type: 'UPnP'
-      device: 'UPnPMediaPlayerDevice'
-      deviceDef: 'mediaplayer-device-config-schemas'
-    chromecast:
-      type: 'Chromecast'
-      device: 'ChromecastMediaPlayerDevice'
-      deviceDef: 'mediaplayer-device-config-schemas'
+    #generic:
+    #  type: 'UPnP'
+    #  device: 'UPnPMediaPlayerDevice'
+    #  deviceDef: 'mediaplayer-device-config-schemas'
+    #chromecast:
+    #  type: 'Chromecast'
+    #  device: 'ChromecastMediaPlayerDevice'
+    #  deviceDef: 'mediaplayer-device-config-schemas'
   
   class MediaPlayer extends env.plugins.Plugin
     
@@ -73,9 +73,9 @@ module.exports = (env) ->
           }
           @framework.deviceManager.registerDeviceClass(className, params)
       
-      #@base.debug "Registering action provider"
-      #actionProviderClass = require('./actions/MediaPlayerActionProvider')(env)
-      #@framework.ruleManager.addActionProvider(new actionProviderClass(@framework, @config))
+      @base.debug "Registering action provider"
+      actionProviderClass = require('./actions/MediaPlayerActionProvider')(env)
+      @framework.ruleManager.addActionProvider(new actionProviderClass(@framework, @config))
     
     _createPimaticDevice: (cfg) =>
       return if !cfg? or !cfg.id? or !cfg.name?

@@ -54,55 +54,54 @@ module.exports = (env) ->
         previous: 0
       }
       
-      @_eventSocket = new net.Socket()
-        .once( 'connect', () =>
-          @_debug('Connected to HEOS device for event messages')
-          @_heosSendCommand(              @_HEOS.ENABLE.EVENTS,       { enable: 'on' }, null, @_eventSocket )
-        )
-        .on('data', @_heosEventHandler)
-        .connect(@_DEFAULT_PORT, @_host)
-        
-      @_heosConnect(@_host, @_DEFAULT_PORT)
-      .then( () => @_heosSendCommand(     @_HEOS.ENABLE.PRETTY_JSON,  { enable: 'on' }) if @debug )
-      .then( () => @_heosSendCommand(     @_HEOS.GET.PLAYERS) )
-      .then( (data) =>
-        pid = 0
-        
-        data.payload.map( (player) =>
-          id = __('heos-%s', player.name.toLowerCase().replace(' ', '-'))
-          pid = player.pid if id is @id
-        )
-        @_pid = pid
-      )
+    updateDevice: (config) =>
+      @_heosEventReceiver(config.address, @_DEFAULT_PORT)
+      @_heosConnect(config.address, @_DEFAULT_PORT)
+      
+      super(config)
       
     playAudio: (@_resource, duration, volume = 40) =>
       @_volume.current = volume
-      
-      return @_heosSendCommand(           @_HEOS.GET.VOLUME,          { pid: @_pid })
-      
+      return @_heosSendCommand(             @_HEOS.GET.VOLUME,          { pid: @_pid })
       .then( (response) =>
-        
+      
         @_volume.previous = response.payload.level
-        @_heosSendCommand(                @_HEOS.SET.VOLUME,          { pid: @_pid, level: @_volume.current })
+        @_heosSendCommand(                        @_HEOS.SET.VOLUME,          { pid: @_pid, level: @_volume.current })
       )
-      .then( () => @_heosSendCommand(     @_HEOS.PLAY.STREAM,         { pid: @_pid }, { url: @_mediaServer.addResource(@_resource) }) )
-      
+      .then( () => @_heosSendCommand(             @_HEOS.PLAY.STREAM,         { pid: @_pid }, { url: @_mediaServer.addResource(@_resource) }) )
       .delay(1000)
-      .then( () => @_heosSendCommand(     @_HEOS.GET.CURRENT_TRACK,   { pid: @_pid }) )
-      
+      .then( () => @_heosSendCommand(             @_HEOS.GET.CURRENT_TRACK,   { pid: @_pid }) )
       .then( (response) =>
         return new Promise( (resolve, reject) =>
-          @once(                          @_HEOS.EVENT.PROGRESS, (info) =>
+          @once(                                  @_HEOS.EVENT.PROGRESS, (info) =>
             ms = info.duration - info.cur_pos
-            
+            ms = 0 if ms < 0
             resolve Promise.delay(ms, response.payload.qid)
           )
         )
-      
       )
-      .then( (qid) => @_heosSendCommand(  @_HEOS.QUEUE.REMOVE_ITEM,  { pid: @_pid, qid: qid } ) )
-      .then( () => @_heosSendCommand(     @_HEOS.SET.VOLUME,          { pid: @_pid, level: @_volume.previous }) )
+      .then( (qid) => @_heosSendCommand(          @_HEOS.QUEUE.REMOVE_ITEM,  { pid: @_pid, qid: qid } ) )
+      .then( () => @_heosSendCommand(             @_HEOS.SET.VOLUME,          { pid: @_pid, level: @_volume.previous }) )
+      .then( (result) =>
+        return Promise.resolve true
+      )
       .catch( (error) => @base.rejectWithErrorString( Promise.reject, @_errorHandler(error) ) )
+    
+    _heosEventReceiver: (host, port) =>
+      return new Promise( (resolve, reject) =>
+        if !@_eventSocket?
+          @_eventSocket = new net.Socket()
+            .once( 'connect', () =>
+              @_debug('Connected to HEOS device for event messages')
+              @_heosSendCommand(                  @_HEOS.ENABLE.EVENTS,       { enable: 'on' }, null, @_eventSocket )
+              .then(() => resolve @_eventSocket)
+            )
+            .on('data', @_heosEventHandler)
+            .connect(port, host)
+        else
+          resolve @_eventSocket
+      )
+      .catch( (error) => Promise.reject error )
     
     _heosConnect: (host, port, options = {}) =>
       return new Promise( (resolve, reject) =>
@@ -124,8 +123,18 @@ module.exports = (env) ->
             .once( 'connect', () =>
               
               @_debug('Connected to HEOS device for commands')
-              
-              resolve @_heosSocket
+              @_heosSendCommand(                  @_HEOS.ENABLE.PRETTY_JSON,  { enable: 'on' })
+              .then( () => @_heosSendCommand(     @_HEOS.GET.PLAYERS) )
+              .then( (data) =>
+                pid = 0
+                
+                data.payload.map( (player) =>
+                  id = __('heos-%s', player.name.toLowerCase().replace(' ', '-'))
+                  pid = player.pid if id is @id
+                )
+                @_pid = pid
+              )
+              .then( () => resolve @_heosSocket )
             )
             .connect(port, host)
         else
@@ -210,8 +219,8 @@ module.exports = (env) ->
       return attributes
     
     destroy: =>
-      @_heosSocket.destroy()
-      @_eventSocket.destroy()
+      @_heosSocket.destroy() if @_heosSocket?
+      @_eventSocket.destroy() if @_eventSocket?
       
       @_debug(__('Disconnected HEOS command and event sockets for: %s', @id))
       
