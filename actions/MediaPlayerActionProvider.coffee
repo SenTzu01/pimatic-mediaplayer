@@ -15,7 +15,7 @@ module.exports = (env) ->
     parseAction: (input, context) =>
       device = null
       file = null
-      volume = null
+      volume = 40
       
       setVolume = (m) =>
         m.match([" with volume "])
@@ -67,6 +67,7 @@ module.exports = (env) ->
             return Promise.resolve __("Would play file: \"%s\"", file)
           
           else
+            @file = file
             @base.debug __("MediaPlayerActionHandler - Device: '%s', file: '%s'", @_device.id, file)
             
             return @_device.playAudio(file, null, volume)
@@ -78,7 +79,7 @@ module.exports = (env) ->
             )
       )
       .catch( (error) =>
-        return Promise.resolve __("There were error(s) playing file: %s", file)
+        return Promise.resolve __("There were error(s) playing file: %s", @file)
       )
     
     destroy: () ->
