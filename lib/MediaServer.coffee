@@ -27,7 +27,7 @@ module.exports = (env) ->
             env.logger.debug __("New request from %s: method: %s, URL: %s", request.socket.remoteAddress, request.method, request.url)
           
             response.on('close', () =>
-              msg = _("Server prematurely closed the connection")
+              msg = __("Server prematurely closed the connection")
               env.logger.error msg
               @emit('responseClose', new Error(msg) ) 
             )
